@@ -1,7 +1,8 @@
 #!/bin/sh
 
 cd "$HOME/klipper"
-make
+make clean
+make -j5
 
 systemctl stop klipper
 ls /dev/serial/by-id/usb-Klipper_* | while read klippermcu; do
