@@ -1,0 +1,17 @@
+#Systemd service file for klipper
+[Unit]
+Description=Starts klipper on startup
+Requires=klipper_mcu.service
+After=klipper_mcu.service
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+Type=simple
+User=pi
+RemainAfterExit=yes
+ExecStart=/home/pi/klippy-env/bin/python /home/pi/klipper/klippy/klippy.py /home/pi/printer/printer.cfg -l /tmp/klippy.log -a /tmp/klippy_uds
+Restart=always
+RestartSec=10

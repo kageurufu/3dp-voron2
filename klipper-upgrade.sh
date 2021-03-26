@@ -1,11 +1,19 @@
 #!/bin/sh
 
 cd "$HOME/klipper"
-make clean
-make -j5
 
-systemctl stop klipper
+sudo systemctl stop klipper
+
+make clean
+
+cp pi.config .config
+make -j5
+make flash
+
+cp skr.config .config
+make -j5
 ls /dev/serial/by-id/usb-Klipper_* | while read klippermcu; do
   ./scripts/flash-sdcard.sh "$klippermcu" btt-skr-turbo-v1.4
 done
-systemctl start klipper
+
+sudo systemctl start klipper
