@@ -2,7 +2,7 @@
 
 cd "$HOME/klipper"
 
-sudo systemctl stop klipper
+sudo systemctl stop klipper klipper_mcu
 
 make clean
 
@@ -16,4 +16,4 @@ ls /dev/serial/by-id/usb-Klipper_* | while read klippermcu; do
   ./scripts/flash-sdcard.sh "$klippermcu" btt-skr-turbo-v1.4
 done
 
-sudo systemctl start klipper
+sudo systemctl start klipper klipper_mcu
