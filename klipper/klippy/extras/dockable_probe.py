@@ -189,8 +189,8 @@ class DockableProbe:
                 val = config.get(name, None)
                 if not val:
                     return None
-                p[0:c] = map(lambda x: float(x.strip()),
-                             val.split(','))[0:c]
+                p[0:c] = list(map(lambda x: float(x.strip()),
+                             val.split(',')))[0:c]
             except:
                 e = "Unable to parse {0} in {1}"
                 raise config.error(e.format(self.name, name))
