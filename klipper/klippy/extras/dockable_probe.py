@@ -411,6 +411,8 @@ class DockableProbe:
 
     # Attaching actions
     def attach_probe(self, return_pos=None):
+        if self.get_probe_state() == PROBE_ATTACHED:
+            return
         self.pre_attach_gcode.run_gcode_from_command()
         if not return_pos:
             return_pos = self.init_pos
@@ -451,6 +453,8 @@ class DockableProbe:
 
     # Detaching actions
     def detach_probe(self, return_pos=None):
+        if self.get_probe_state() == PROBE_DOCKED:
+            return
         self.pre_detach_gcode.run_gcode_from_command()
         self.toolhead.manual_move(
             [self.approach_position[0], self.approach_position[1], None],

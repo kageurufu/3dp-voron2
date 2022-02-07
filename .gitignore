@@ -5,8 +5,7 @@
 !services/*
 
 !klipper/
-!klipper/pi.config
-!klipper/skr.config
+!klipper/*.config
 !klipper-upgrade.sh
 
 !printer/
