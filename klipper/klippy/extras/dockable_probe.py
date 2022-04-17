@@ -469,7 +469,7 @@ class DockableProbe:
         if self._check_distance(dist=self.detach_distance):
             self._align_to_vector(self.detach_angle)
             self.toolhead.manual_move(
-                [self.detach_position[0], self.detach_position[1], None],
+                [self.detach_position[0], self.detach_position[1], self.detach_position[2]],
                  self.travel_speed)
         if self.get_probe_state() != PROBE_DOCKED:
             raise self.printer.command_error('Probe detach failed!')
@@ -484,14 +484,14 @@ class DockableProbe:
             self._align_to_vector(self.dock_angle)
         else:
             self.toolhead.manual_move(
-                [self.approach_position[0], self.approach_position[1], None],
+                [self.approach_position[0], self.approach_position[1], self.approach_position[2]],
                  self.travel_speed)
         self.toolhead.manual_move(
-            [self.dock_position[0], self.dock_position[1], None],
+            [self.dock_position[0], self.dock_position[1], self.dock_position[2]],
              self.attach_speed)
         self.detach_gcode.run_gcode_from_command()
         self.toolhead.manual_move(
-            [self.detach_position[0], self.detach_position[1], None],
+            [self.detach_position[0], self.detach_position[1], self.detach_position[2]],
              self.travel_speed)
 
     # Register a callback to detach the probe in the future if
@@ -527,15 +527,6 @@ class DockableProbe:
         if self.get_probe_state() == PROBE_UNKNOWN:
                 self._force_z_hop()
         if self.get_probe_state() == PROBE_ATTACHED:
-            # If X and Y endstop are within the dock location,
-            # Move out of the dock before attempting to home Z
-            if any(a in ['x','y'] for a in homing_axes):
-                self._force_z_hop()
-                if 'xy' in self._last_homed:
-                    if self._check_distance(self.dock_position,
-                                            self.approach_distance):
-                        self._align_to_vector(self.dock_angle)
-                        self._move_to_vector(self.dock_angle)
             if 'z' in homing_axes:
                 if self.is_z_endstop:
                     self._align_z()
@@ -543,6 +534,16 @@ class DockableProbe:
                     if ('xy' in self._last_homed
                         and not self.z_homes_positive
                         and not self.z_home_while_attached):
+                        # If X and Y endstop are within the dock location,
+                        # Move out of the dock before attempting to home Z
+                        if any(a in ['x','y'] for a in homing_axes):
+                            self._force_z_hop()
+                            if 'xy' in self._last_homed:
+                                if self._check_distance(self.dock_position,
+                                                        self.approach_distance):
+                                    self._align_to_vector(self.dock_angle)
+                                    self._move_to_vector(self.dock_angle)
+
                         self.detach_probe(self.toolhead.get_position())
     def _handle_homing_rails_end(self, homing_state, rails):
         self.is_z_endstop = False

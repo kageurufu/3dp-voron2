@@ -1,0 +1,53 @@
+
+[gcode_macro TMC_DUMP_REGISTER]
+gcode:
+    {% set stepper = params.STEPPER %}
+    {% set register = params.REGISTER %}
+
+    {% set mcu_tmc = printer.__dict__['printer'].lookup_object('tmc2209 %s' % stepper).mcu_tmc %}
+    {action_respond_info("%s %s: %02x" % (stepper, register, mcu_tmc.get_register('SG_RESULT')))}
+
+
+[gcode_macro STALLTUNE]
+gcode:
+    {% set axis = params.AXIS | default('x') %}
+    {% set driver = params.DRIVER | default('tmc2209') %}
+    {% set stepper = params.STEPPER | default('stepper_%s' % axis) %}
+    {% set homing_feedrate = params.HOMING_FEEDRATE | default(60 * printer.configfile.settings[stepper].homing_speed) %}
+    {% set travel_feedrate = params.TRAVEL_FEEDRATE | default(homing_feedrate) | int %}
+
+    # Break sandbox
+    {% set p = printer.__dict__['printer'] %}
+    # Get our stepper driver 
+    {% set driver = p.lookup_object('%s %s' % (driver, stepper)) %}
+    {% set mcu_tmc = driver.mcu_tmc %}
+
+    {% if mcu_tmc.__class__.__name__ != 'MCU_TMC_uart' %}
+        {action_raise_error('STALLTUNE is only compatible with TMC drivers in uart mode')}
+    {% endif %}
+
+    {% set sgtrsh = mcu_tmc.get_register('SGTHRS') %}
+    {% set sg_result = mcu_tmc.get_register('SG_RESULT') %}
+
+    {action_respond_info('Result: SG_RESULT: 0x%02x %s (SGTHRS: 0x%02x) * 2' % (
+        sg_result,
+        '<=' if sg_result <= sgtrsh * 2 else '>',
+        sgtrsh,
+    ))}
+    
+    # First lets get a reasonable max SG_RESULT
+    SAVE_GCODE_STATE NAME=STALLTUNE
+
+    G91
+    G0 {axis}+1 F{homing_feedrate}
+    G0 {axis}-1 F{homing_feedrate}
+    G0 {axis}+1 F{homing_feedrate}
+    G0 {axis}-1 F{homing_feedrate}
+    {% set sg_result = mcu_tmc.get_register('SG_RESULT') %}
+    {action_respond_info('Post-move: SG_RESULT: 0x%02x %s (SGTHRS: 0x%02x) * 2' % (
+        sg_result,
+        '<=' if sg_result <= sgtrsh * 2 else '>',
+        sgtrsh,
+    ))}
+
+    RESTORE_GCODE_STATE NAME=STALLTUNE
