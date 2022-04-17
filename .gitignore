@@ -22,3 +22,5 @@ sdcard/*
 !KlipperScreen.conf
 
 !nginx-site.conf
+
+!autocommit.sh
