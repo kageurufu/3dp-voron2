@@ -213,7 +213,8 @@ class DockableProbe:
         pin = config.get('pin')
         pin_params = ppins.lookup_pin(pin, can_invert=True, can_pullup=True)
         mcu = pin_params['chip']
-        mcu.register_config_callback(self._build_config)
+        self.printer.register_event_handler('klippy:mcu_identify',
+                                            self._handle_mcu_identify)
         self.mcu_endstop = mcu.setup_pin('endstop', pin_params)
 
         # Wrappers
@@ -258,7 +259,7 @@ class DockableProbe:
         self.printer.register_event_handler('homing:home_rails_end',
                                             self._handle_homing_rails_end)
 
-    def _build_config(self):
+    def _handle_mcu_identify(self):
         kin = self.printer.lookup_object('toolhead').get_kinematics()
         for stepper in kin.get_steppers():
             if stepper.is_active_axis('z'):
@@ -413,86 +414,35 @@ class DockableProbe:
     def attach_probe(self, return_pos=None):
         if self.get_probe_state() == PROBE_ATTACHED:
             return
+
         self.pre_attach_gcode.run_gcode_from_command()
-        if not return_pos:
-            return_pos = self.init_pos
-        if self._check_distance(dist=self.approach_distance):
-            self._align_to_vector(self.dock_angle)
-        if self.get_probe_state() == PROBE_DOCKED:
-            self._align_z()
-        retry = 0
-        while (self.get_probe_state() != PROBE_ATTACHED
-               and retry < self.dock_retries):
-            self._do_attach()
-            retry += 1
+
+        self.attach_gcode.run_gcode_from_command()
+
         if self.get_probe_state() != PROBE_ATTACHED:
             raise self.printer.command_error('Probe attach failed!')
+
         self.post_attach_gcode.run_gcode_from_command()
+
         if return_pos:
             if not self._check_distance(return_pos, self.approach_distance):
                 self.toolhead.manual_move(
                     [return_pos[0], return_pos[1], None],
                     self.travel_speed)
-    def _do_attach(self):
-        if self.get_probe_state() != PROBE_DOCKED:
-            raise self.printer.command_error(
-                'Attach Probe: Probe not detected in dock, aborting')
-        if self._check_distance(dist=self.approach_distance):
-            self._align_to_vector(self.dock_angle)
-        else:
-            self._move_to_vector(self.dock_angle)
-        self.toolhead.manual_move(
-            [self.dock_position[0],self.dock_position[1], None],
-             self.attach_speed)
-        self.attach_gcode.run_gcode_from_command()
-        if self._check_distance(dist=self.approach_distance):
-            self._align_to_vector(self.dock_angle)
-        self.toolhead.manual_move(
-            [self.approach_position[0], self.approach_position[1], None],
-             self.travel_speed)
 
     # Detaching actions
     def detach_probe(self, return_pos=None):
         if self.get_probe_state() == PROBE_DOCKED:
             return
+
         self.pre_detach_gcode.run_gcode_from_command()
-        self.toolhead.manual_move(
-            [self.approach_position[0], self.approach_position[1], None],
-             self.travel_speed)
-        if self.get_probe_state() == PROBE_ATTACHED:
-            self._align_z()
-        retry = 0
-        while (self.get_probe_state() != PROBE_DOCKED
-               and retry < self.dock_retries):
-            self._do_detach()
-            retry += 1
-        if self._check_distance(dist=self.detach_distance):
-            self._align_to_vector(self.detach_angle)
-            self.toolhead.manual_move(
-                [self.detach_position[0], self.detach_position[1], self.detach_position[2]],
-                 self.travel_speed)
+
+        self.detach_gcode.run_gcode_from_command()
+
         if self.get_probe_state() != PROBE_DOCKED:
             raise self.printer.command_error('Probe detach failed!')
+
         self.post_detach_gcode.run_gcode_from_command()
-        if return_pos:
-            if not self._check_distance(return_pos, self.detach_distance):
-                self.toolhead.manual_move(
-                    [return_pos[0], return_pos[1], None],
-                    self.travel_speed)
-    def _do_detach(self):
-        if self._check_distance(dist=self.detach_distance):
-            self._align_to_vector(self.dock_angle)
-        else:
-            self.toolhead.manual_move(
-                [self.approach_position[0], self.approach_position[1], self.approach_position[2]],
-                 self.travel_speed)
-        self.toolhead.manual_move(
-            [self.dock_position[0], self.dock_position[1], self.dock_position[2]],
-             self.attach_speed)
-        self.detach_gcode.run_gcode_from_command()
-        self.toolhead.manual_move(
-            [self.detach_position[0], self.detach_position[1], self.detach_position[2]],
-             self.travel_speed)
 
     # Register a callback to detach the probe in the future if
     # no pending probing actions are queued
